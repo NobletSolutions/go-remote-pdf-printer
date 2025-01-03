@@ -1,0 +1,41 @@
+<style media="print">
+    /* Do not edit below this line */
+    @page
+    {
+        margin: 0;
+        padding: 0;
+    }
+
+    html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    * {
+        -webkit-print-color-adjust: exact;
+        box-sizing: border-box;
+    }
+
+    header {
+        position: relative;
+        top: -0.16in; /* Do not change this */
+        height: 1.5in; /* Must match marginTop minus header padding */
+        font-size: 11pt;
+        width: 100%;
+    }
+
+    footer {
+        position: relative;
+        bottom: -0.16in; /* Do not change this */
+        font-size: 10pt;
+        width: 100%;
+    }
+</style>
