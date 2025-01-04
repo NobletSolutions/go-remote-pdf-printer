@@ -11,24 +11,25 @@ import (
 )
 
 type PdfRequest struct {
-	Data         []string  `json:"data,omitempty"`
-	Url          []string  `json:"url,omitempty"`
-	Download     bool      `json:"download"`
-	Header       *string   `json:"header,omitempty"`
-	Footer       *string   `json:"footer,omitempty"`
-	MarginTop    *float32  `json:"marginTop,omitempty"`
-	MarginBottom *float32  `json:"marginBottom,omitempty"`
-	MarginLeft   *float32  `json:"marginLeft,omitempty"`
-	MarginRight  *float32  `json:"marginRight,omitempty"`
-	PaperSize    []float64 `json:"paperSize,omitempty"`
+	Data         []string  `json:"data,omitempty" form:"data"`
+	Url          []string  `json:"url,omitempty" form:"url"`
+	Download     bool      `json:"download" form:"download"`
+	Header       *string   `json:"header,omitempty" form:"header"`
+	Footer       *string   `json:"footer,omitempty" form:"footer"`
+	MarginTop    *float32  `json:"marginTop,omitempty" form:"marginTop"`
+	MarginBottom *float32  `json:"marginBottom,omitempty" form:"marginBottom"`
+	MarginLeft   *float32  `json:"marginLeft,omitempty"  form:"marginLeft"`
+	MarginRight  *float32  `json:"marginRight,omitempty" form:"marginRight"`
+	PaperSize    []float64 `json:"paperSize,omitempty" form:"paperSize"`
 }
 
 func getPdf(c *gin.Context) {
 	var pdfRequestParams PdfRequest
 
-	err := c.ShouldBindJSON(&pdfRequestParams)
+	// Handle JSON/XML/Form-Data
+	err := c.ShouldBind(&pdfRequestParams)
 	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"msg": "Could not bind", "message": err.Error()}) // This err.Error() gives away we're using golang and will need to be changed
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data"})
 		return
 	}
 
@@ -63,9 +64,11 @@ func getPdf(c *gin.Context) {
 
 func getPdfPreview(c *gin.Context) {
 	var pdfRequestParams PdfRequest
-	err := c.ShouldBindJSON(&pdfRequestParams)
+
+	// Handle JSON/XML/Form-Data
+	err := c.ShouldBind(&pdfRequestParams)
 	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"msg": "Could not bind", "message": err.Error()}) // This err.Error() gives away we're using golang and will need to be changed
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data"})
 		return
 	}
 

@@ -10,7 +10,7 @@ PDF
 * /preview/:file [GET]
 
 
-Both /pdf and /preview POST expect `application/json` data.
+Both /pdf and /preview POST can handle json ,form-data, xml request formats.
 
 ```
 {
@@ -29,7 +29,7 @@ Both /pdf and /preview POST expect `application/json` data.
 
 # /pdf
 
-When download is set to false the return value is
+When download is set to false the return value is json
 
 ```
 {
