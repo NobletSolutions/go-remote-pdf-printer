@@ -6,6 +6,7 @@ WORKDIR /app
 
 COPY go.mod go.sum ./
 COPY *.go .
+COPY ./docs ./docs
 
 RUN go mod download
 
@@ -16,6 +17,7 @@ FROM fedora:41 as prod
 WORKDIR /app
 
 COPY css ./css
+COPY docs/swagger* ./docs/
 COPY --from=builder /app/remote-pdf-printer /app/remote-pdf-printer
 RUN dnf install -y poppler-utils && dnf clean all
 

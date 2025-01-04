@@ -6,8 +6,12 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/NobletSolutions/go-remote-pdf-printer/docs"
+
 	"github.com/gin-contrib/location"
 	"github.com/gin-gonic/gin"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type PdfRequest struct {
@@ -23,6 +27,29 @@ type PdfRequest struct {
 	PaperSize    []float64 `json:"paperSize,omitempty" form:"paperSize"`
 }
 
+type PdfResponse struct {
+	Url        string   `json:"url"`
+	Components []string `json:"components"`
+}
+
+type PreviewResponse struct {
+	Pages   int8
+	Images  []string
+	PdfInfo map[string]string
+	// {"success": true, "pages": pages, "images": images, "basename": baseName, "pdfInfo": pdfInfo}
+}
+
+// @Summary Submit urls/data to be converted to a PDF
+// @Schemes
+// @Description Submit urls/data to be converted to a PDF
+// @Accept json
+// @Accept xml
+// @Produce json
+// @Param data body PdfRequest true "The input todo struct"
+// @Success 200 {object} PdfResponse
+// @Failure      400
+// @Failure      500
+// @Router /pdf [post]
 func getPdf(c *gin.Context) {
 	var pdfRequestParams PdfRequest
 
@@ -59,9 +86,20 @@ func getPdf(c *gin.Context) {
 		outputFiles = append(outputFiles, url+filepath.Base(value))
 	}
 
-	c.IndentedJSON(http.StatusOK, gin.H{"url": url + outFileName, "pdf": outFileName, "components": outputFiles})
+	c.IndentedJSON(http.StatusOK, PdfResponse{Url: url + outFileName, Components: outputFiles})
 }
 
+// @Summary Submit urls/data to be converted to a PDF and then one image per page
+// @Schemes
+// @Description Submit urls/data to be converted to a PDF and then one image per page
+// @Accept json
+// @Accept xml
+// @Produce json
+// @Param data body PdfRequest true "The input todo struct"
+// @Success 200 {object} PreviewResponse
+// @Failure      400
+// @Failure      500
+// @Router /preview [post]
 func getPdfPreview(c *gin.Context) {
 	var pdfRequestParams PdfRequest
 
@@ -109,7 +147,7 @@ func getPdfPreview(c *gin.Context) {
 		images = append(images, fmt.Sprintf("%s%s-%d.jpg", url, baseName, i+1))
 	}
 
-	c.IndentedJSON(http.StatusOK, gin.H{"success": true, "pages": pages, "images": images, "basename": baseName, "pdfInfo": pdfInfo})
+	c.IndentedJSON(http.StatusOK, PreviewResponse{Pages: int8(pages), Images: images, PdfInfo: pdfInfo})
 }
 
 func getStatus(c *gin.Context) {
@@ -136,6 +174,9 @@ func main() {
 	router.GET("/status", getStatus)
 	router.Static("/pdfs", *serverOptions.RootDirectory+"/files/pdfs")
 	router.Static("/preview", *serverOptions.RootDirectory+"/files/previews")
+
+	docs.SwaggerInfo.BasePath = "/"
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	address := serverOptions.Address + fmt.Sprintf(":%d", serverOptions.Port)
 	if serverOptions.UseTLS {

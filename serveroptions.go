@@ -12,6 +12,7 @@ type ServerOptions struct {
 	Port                int16
 	Address             string
 	UseTLS              bool
+	CertDirectory       *string
 	CertPath            *string
 	KeyPath             *string
 	LogPath             string
@@ -113,7 +114,7 @@ func New(src *ServerOptions) *ServerOptions {
 		options.ChromeUri = address
 	}
 
-	useTls := os.Getenv("REMOTE_PDF_USE_TLS")
+	useTls := os.Getenv("REMOTE_PDF_TLS_ENABLE")
 	if useTls != "" {
 		boolVal, err := strconv.ParseBool(useTls)
 		if err != nil {
@@ -126,6 +127,17 @@ func New(src *ServerOptions) *ServerOptions {
 
 		options.UseTLS = boolVal
 	}
+
+	certDir := os.Getenv("REMOTE_PDF_TLS_CERT_DIR")
+	if certDir == "" {
+		certDir = *options.RootDirectory + "/certs"
+	}
+
+	if options.Debug {
+		fmt.Printf("Setting CertDirectory to %s", certDir)
+	}
+
+	options.CertDirectory = &certDir
 
 	if options.UseTLS {
 		certPath := os.Getenv("REMOTE_PDF_TLS_CERT_PATH")

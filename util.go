@@ -26,4 +26,11 @@ func createDirectories(options *ServerOptions) {
 			}
 		}
 	}
+
+	if options.CertDirectory != nil && !pathExists(*options.CertDirectory) {
+		err := os.MkdirAll(*options.CertDirectory, 0755)
+		if err != nil {
+			panic("Unable to create cert directory: " + err.Error())
+		}
+	}
 }

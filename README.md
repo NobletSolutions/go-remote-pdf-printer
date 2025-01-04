@@ -77,17 +77,18 @@ The return value
 
 There are a number of environment variables that can be set to control the service
 
-| Environment Variable                   | Default Value                      |
-| -------------------------------------- | ---------------------------------- |
-| REMOTE_PDF_ROOT_DIRECTORY              | The process CWD                    |
-| REMOTE_PDF_DEBUG_HEADER_STYLE_TEMPLATE | css/default-header.css.txt |
-| REMOTE_PDF_PORT                        | 3000                               |
-| REMOTE_PDF_LISTEN                      | 127.0.0.1                          |
-| REMOTE_PDF_CHROME_URI                  | 127.0.0.1:1337                     |
-| REMOTE_PDF_USE_TLS                     | false                              |
-| REMOTE_PDF_TLS_CERT_PATH               | nil - required if TLS is true      |
-| REMOTE_PDF_TLS_KEY_PATH                | nil - required if TLS is true      |
-| REMOTE_PDF_LOG_PATH                    | /var/log - currently unused        |
+| Environment Variable                   | Default Value                               |
+| -------------------------------------- | ------------------------------------------- |
+| REMOTE_PDF_ROOT_DIRECTORY              | $CWD                                        |
+| REMOTE_PDF_DEBUG_HEADER_STYLE_TEMPLATE | css/default-header.css.txt                  |
+| REMOTE_PDF_PORT                        | 3000                                        |
+| REMOTE_PDF_LISTEN                      | 127.0.0.1                                   |
+| REMOTE_PDF_CHROME_URI                  | 127.0.0.1:1337                              |
+| REMOTE_PDF_TLS_ENABLE                  | true                                        |
+| REMOTE_PDF_TLS_CERT_DIR                | $CWD/certs                                  |
+| REMOTE_PDF_TLS_CERT_PATH               | nil - required if TLS is true               |
+| REMOTE_PDF_TLS_KEY_PATH                | nil - required if TLS is true               |
+| REMOTE_PDF_LOG_PATH                    | /var/log - currently unused                 |
 
 
 # Docker Container
@@ -102,6 +103,6 @@ To run it with a local chrome instance
 
 You'll need a headless chrome instance running and listening on port 1337
 
-`podman run -name remote-pdf-printer -e REMOTE_PDF_LISTEN=0.0.0.0 -e REMOTE_PDF_CHROME_URI="host.containers.internal:1337" -e REMOTE_PDF_USE_TLS=false -p 8080:3000 -v ./files:/app/files:z localhost/remote-pdf-printer:latest`
+`podman run -name remote-pdf-printer -e REMOTE_PDF_LISTEN=0.0.0.0 -e REMOTE_PDF_CHROME_URI="host.containers.internal:1337" -e REMOTE_PDF_TLS_ENABLE=false -p 8080:3000 -v ./files:/app/files:z localhost/remote-pdf-printer:latest`
 
 Will start the container
