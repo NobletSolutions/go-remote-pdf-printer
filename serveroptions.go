@@ -36,14 +36,14 @@ func New(src *ServerOptions) *ServerOptions {
 	rootDirectory := os.Getenv("REMOTE_PDF_ROOT_DIRECTORY")
 	if rootDirectory != "" {
 		if !pathExists(rootDirectory) {
-			errorString := fmt.Sprintf("Requested root directory (%s) does not exist", rootDirectory)
+			errorString := fmt.Sprintf("Requested root directory (%s) does not exist\n", rootDirectory)
 			panic(errorString)
 		}
 		options.RootDirectory = &rootDirectory
 	} else {
 		rootDirectory, err := os.Getwd()
 		if err != nil {
-			panic("Unable to get CWD")
+			panic("Unable to get CWD\n")
 		}
 		options.RootDirectory = &rootDirectory
 	}
@@ -51,7 +51,7 @@ func New(src *ServerOptions) *ServerOptions {
 	headerTemplatePath := os.Getenv("REMOTE_PDF_DEBUG_HEADER_STYLE_TEMPLATE")
 	if headerTemplatePath != "" {
 		if !pathExists(headerTemplatePath) {
-			panic("Unable to locate header path")
+			panic("Unable to locate header path\n")
 		}
 	} else {
 		headerTemplatePath = *options.RootDirectory + "/css/default-header.css.txt"
@@ -59,7 +59,8 @@ func New(src *ServerOptions) *ServerOptions {
 
 	headerTemplateBytes, err := os.ReadFile(headerTemplatePath)
 	if err != nil {
-		panic(err)
+		errorString := fmt.Sprintf("%s\n", err.Error())
+		panic(errorString)
 	}
 
 	options.HeaderStyleTemplate = string(headerTemplateBytes) // convert content to a 'string'
@@ -68,18 +69,28 @@ func New(src *ServerOptions) *ServerOptions {
 	if debug != "" {
 		boolVal, err := strconv.ParseBool(debug)
 		if err != nil {
-			panic("Unable to parse env REMOTE_PDF_DEBUG")
+			panic("Unable to parse env REMOTE_PDF_DEBUG\n")
 		}
+
 		options.Debug = boolVal
 		options.DebugSources = boolVal
+
+		if options.Debug {
+			fmt.Printf("Setting debug and debug_sources to %t\n", boolVal)
+		}
 	}
 
 	debug = os.Getenv("REMOTE_PDF_DEBUG_SOURCES")
 	if debug != "" {
 		boolVal, err := strconv.ParseBool(debug)
 		if err != nil {
-			panic("Unable to parse env REMOTE_PDF_DEBUG_SOURCEs")
+			panic("Unable to parse env REMOTE_PDF_DEBUG_SOURCES\n")
 		}
+
+		if options.Debug {
+			fmt.Printf("Setting debug_sources to %t\n", boolVal)
+		}
+
 		options.DebugSources = boolVal
 	}
 
@@ -87,7 +98,7 @@ func New(src *ServerOptions) *ServerOptions {
 	if port != "" {
 		intPort, err := strconv.ParseInt(port, 10, 16)
 		if err != nil {
-			panic("Unable to parse env REMOTE_PDF_PORT")
+			panic("Unable to parse env REMOTE_PDF_PORT\n")
 		}
 
 		if options.Debug {
@@ -99,7 +110,7 @@ func New(src *ServerOptions) *ServerOptions {
 	address := os.Getenv("REMOTE_PDF_LISTEN")
 	if address != "" {
 		if options.Debug {
-			fmt.Printf("Setting address to %s", address)
+			fmt.Printf("Setting address to %s\n", address)
 		}
 
 		options.Address = address
@@ -108,7 +119,7 @@ func New(src *ServerOptions) *ServerOptions {
 	address = os.Getenv("REMOTE_PDF_CHROME_URI")
 	if address != "" {
 		if options.Debug {
-			fmt.Printf("Setting chrome uri to %s", address)
+			fmt.Printf("Setting chrome uri to %s\n", address)
 		}
 
 		options.ChromeUri = address
@@ -118,11 +129,11 @@ func New(src *ServerOptions) *ServerOptions {
 	if useTls != "" {
 		boolVal, err := strconv.ParseBool(useTls)
 		if err != nil {
-			panic("Unable to parse env REMOTE_PDF_USE_TLS")
+			panic("Unable to parse env REMOTE_PDF_USE_TLS\n")
 		}
 
 		if options.Debug {
-			fmt.Printf("Setting UseTLS to %t", boolVal)
+			fmt.Printf("Setting UseTLS to %t\n", boolVal)
 		}
 
 		options.UseTLS = boolVal
@@ -134,7 +145,7 @@ func New(src *ServerOptions) *ServerOptions {
 	}
 
 	if options.Debug {
-		fmt.Printf("Setting CertDirectory to %s", certDir)
+		fmt.Printf("Setting CertDirectory to %s\n", certDir)
 	}
 
 	options.CertDirectory = &certDir
@@ -142,13 +153,13 @@ func New(src *ServerOptions) *ServerOptions {
 	if options.UseTLS {
 		certPath := os.Getenv("REMOTE_PDF_TLS_CERT_PATH")
 		if certPath == "" || (certPath != "" && !pathExists(certPath)) {
-			panic("TLS enabled but unable to locate certificate path")
+			panic("TLS enabled but unable to locate certificate path\n")
 		}
 		options.CertPath = &certPath
 
 		keyPath := os.Getenv("REMOTE_PDF_TLS_KEY_PATH")
 		if keyPath == "" || (keyPath != "" && !pathExists(keyPath)) {
-			panic("TLS enabled but unable to locate key path")
+			panic("TLS enabled but unable to locate key path\n")
 		}
 		options.KeyPath = &keyPath
 	}
