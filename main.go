@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"maps"
 	"net/http"
+	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 
 	"github.com/NobletSolutions/go-remote-pdf-printer/docs"
@@ -15,16 +19,15 @@ import (
 )
 
 type PdfRequest struct {
-	Data         []string  `json:"data,omitempty" form:"data"`
-	Url          []string  `json:"url,omitempty" form:"url"`
+	Data         []string  `json:"data" form:"data"`
 	Download     bool      `json:"download" form:"download"`
-	Header       *string   `json:"header,omitempty" form:"header"`
-	Footer       *string   `json:"footer,omitempty" form:"footer"`
-	MarginTop    *float32  `json:"marginTop,omitempty" form:"marginTop"`
-	MarginBottom *float32  `json:"marginBottom,omitempty" form:"marginBottom"`
-	MarginLeft   *float32  `json:"marginLeft,omitempty"  form:"marginLeft"`
-	MarginRight  *float32  `json:"marginRight,omitempty" form:"marginRight"`
-	PaperSize    []float64 `json:"paperSize,omitempty" form:"paperSize"`
+	Header       *string   `json:"header" form:"header"`
+	Footer       *string   `json:"footer" form:"footer"`
+	MarginTop    *float32  `json:"marginTop" form:"marginTop"`
+	MarginBottom *float32  `json:"marginBottom" form:"marginBottom"`
+	MarginLeft   *float32  `json:"marginLeft"  form:"marginLeft"`
+	MarginRight  *float32  `json:"marginRight" form:"marginRight"`
+	PaperSize    []float64 `json:"paperSize" form:"paperSize"`
 }
 
 type PdfResponse struct {
@@ -33,10 +36,31 @@ type PdfResponse struct {
 }
 
 type PreviewResponse struct {
-	Pages   int8
-	Images  []string
-	PdfInfo map[string]string
-	// {"success": true, "pages": pages, "images": images, "basename": baseName, "pdfInfo": pdfInfo}
+	Pages   int8     `json:"pages"`
+	Images  []string `json:"images"`
+	pdfInfo map[string]string
+}
+
+func extractData(c *gin.Context) (*PdfRequest, bool) {
+	var pdfRequestParams PdfRequest
+
+	// Handle JSON/XML/Form-Data
+	err := c.ShouldBind(&pdfRequestParams)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data", "details": err.Error()})
+		return nil, false
+	}
+
+	if pdfRequestParams.Data == nil {
+		conf := c.PostFormMap("data")
+		pdfRequestParams.Data = slices.Collect(maps.Values(conf))
+	}
+
+	if len(pdfRequestParams.Data) <= 0 {
+		return nil, false
+	}
+
+	return &pdfRequestParams, true
 }
 
 // @Summary Submit urls/data to be converted to a PDF
@@ -51,22 +75,19 @@ type PreviewResponse struct {
 // @Failure      500
 // @Router /pdf [post]
 func getPdf(c *gin.Context) {
-	var pdfRequestParams PdfRequest
-
-	// Handle JSON/XML/Form-Data
-	err := c.ShouldBind(&pdfRequestParams)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data"})
-		return
-	}
-
 	options, ok := c.MustGet("serverOptions").(*ServerOptions)
 	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to retrieve data to generate PDF!", "message": "Error retrieving ServerOptions"})
 		return
 	}
 
-	pdfResult, err := buildPdf(&pdfRequestParams, options)
+	pdfRequestParams, ok := extractData(c)
+	if !ok {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data"})
+		return
+	}
+
+	pdfResult, err := buildPdf(pdfRequestParams, options)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate PDF!", "message": err.Error()})
 		return
@@ -101,22 +122,19 @@ func getPdf(c *gin.Context) {
 // @Failure      500
 // @Router /preview [post]
 func getPdfPreview(c *gin.Context) {
-	var pdfRequestParams PdfRequest
-
-	// Handle JSON/XML/Form-Data
-	err := c.ShouldBind(&pdfRequestParams)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data"})
-		return
-	}
-
 	options, ok := c.MustGet("serverOptions").(*ServerOptions)
 	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to retrieve data to generate PDF!", "message": "Error retrieving ServerOptions"})
 		return
 	}
 
-	pdfResult, err := buildPdf(&pdfRequestParams, options)
+	pdfRequestParams, ok := extractData(c)
+	if !ok {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data"})
+		return
+	}
+
+	pdfResult, err := buildPdf(pdfRequestParams, options)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate PDF!", "message": err.Error()})
 		return
@@ -147,7 +165,7 @@ func getPdfPreview(c *gin.Context) {
 		images = append(images, fmt.Sprintf("%s%s-%d.jpg", url, baseName, i+1))
 	}
 
-	c.IndentedJSON(http.StatusOK, PreviewResponse{Pages: int8(pages), Images: images, PdfInfo: pdfInfo})
+	c.IndentedJSON(http.StatusOK, PreviewResponse{Pages: int8(pages), Images: images, pdfInfo: pdfInfo})
 }
 
 func getStatus(c *gin.Context) {
@@ -165,10 +183,24 @@ func main() {
 	serverOptions = New(serverOptions)
 	createDirectories(serverOptions)
 
+	gin.DisableConsoleColor()
+
+	f, err := os.Create(serverOptions.LogPath + "/remote-pdf-printer.log")
+	if err != nil {
+		panic(fmt.Sprintln("Unable to open log file: " + err.Error()))
+	}
+
+	serverOptions.LogFile = f
+	gin.DefaultWriter = io.MultiWriter(serverOptions.LogFile, os.Stdout)
 	router := gin.Default()
+
 	router.SetTrustedProxies(nil)
 	router.Use(ApiMiddleware(serverOptions))
 	router.Use(location.Default())
+	if serverOptions.Debug {
+		router.Use(LogRequestDataMiddleware(serverOptions))
+	}
+
 	router.POST("/pdf", getPdf)
 	router.POST("/preview", getPdfPreview)
 	router.GET("/status", getStatus)

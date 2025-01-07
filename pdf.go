@@ -44,24 +44,8 @@ func getBrowserTargets(c *gin.Context) chromedp.Tasks {
 	}
 }
 
-func extractData(request *PdfRequest) (*[]string, error) {
-	if request.Data == nil && request.Url == nil {
-		return nil, errors.New("no url / data submitted")
-	}
-
-	if request.Data != nil {
-		return &request.Data, nil
-	}
-
-	return &request.Url, nil
-}
-
 func buildPdf(pdfRequestParams *PdfRequest, serverOptions *ServerOptions) (*PdfReturn, error) {
-	requestData, err := extractData(pdfRequestParams)
-	if err != nil {
-		return nil, errors.New("unable to retrieve data")
-	}
-
+	requestData := pdfRequestParams.Data
 	if serverOptions.DebugSources {
 		tempFile, err := os.CreateTemp(*serverOptions.RootDirectory+"/files/sources/", "*.html")
 		if err == nil {
@@ -81,8 +65,12 @@ func buildPdf(pdfRequestParams *PdfRequest, serverOptions *ServerOptions) (*PdfR
 	var opts []chromedp.ContextOption
 	opts = append(opts, chromedp.WithLogf(log.Printf))
 
+	if serverOptions.Debug {
+		opts = append(opts, chromedp.WithDebugf(log.Printf))
+	}
+
 	channel := make(chan PdfStatus)
-	for index, requestDataOrUrl := range *requestData {
+	for index, requestDataOrUrl := range requestData {
 		allocatorContext, _ := chromedp.NewRemoteAllocator(context.Background(), "ws://"+serverOptions.ChromeUri)
 
 		// create context
@@ -93,7 +81,7 @@ func buildPdf(pdfRequestParams *PdfRequest, serverOptions *ServerOptions) (*PdfR
 
 	outputFiles := make(map[int]string)
 
-	result := make([]PdfStatus, len(*requestData))
+	result := make([]PdfStatus, len(requestData))
 	for i := range result {
 		result[i] = <-channel
 		if result[i].success {
@@ -152,8 +140,6 @@ func getPrintOptions(requestParams *PdfRequest, headerStyleTemplate *string) (*p
 	params := page.PrintToPDF()
 	params.PrintBackground = true
 
-	// pdfOptions := PrintOptions{PrintBackground: true}
-
 	if requestParams.Header != nil {
 		if requestParams.MarginTop == nil {
 			return nil, errors.New("marginTop is required when providing a header template")
@@ -170,7 +156,6 @@ func getPrintOptions(requestParams *PdfRequest, headerStyleTemplate *string) (*p
 		}
 		var top float64 = adjustment
 		top += float64(*requestParams.MarginTop)
-		// pdfOptions.MarginTop = &top
 		params.MarginTop = top
 	}
 

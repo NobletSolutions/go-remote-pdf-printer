@@ -13,6 +13,7 @@ RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./remote-pdf-printer
 
 FROM fedora:41 as prod
+MAINTAINER nathanael@noblet.ca
 
 WORKDIR /app
 

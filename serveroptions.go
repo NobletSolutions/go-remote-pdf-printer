@@ -16,6 +16,7 @@ type ServerOptions struct {
 	CertPath            *string
 	KeyPath             *string
 	LogPath             string
+	LogFile             *os.File
 	RootDirectory       *string
 	HeaderStyleTemplate string
 	ChromeUri           string

@@ -53,22 +53,6 @@ The return value
         "http://localhost:8080/preview/2378371505-combined-2.jpg"
     ],
     "pages": 2,
-    "pdfInfo": {
-        "custom_metadata": "no",
-        "encrypted": "no",
-        "file_size": "177025 bytes",
-        "form": "none",
-        "javascript": "no",
-        "metadata_stream": "no",
-        "optimized": "no",
-        "page_rot": "0",
-        "page_size": "612 x 792 pts (letter)",
-        "pages": "2",
-        "pdf_version": "1.4",
-        "suspects": "no",
-        "tagged": "no",
-        "userproperties": "no"
-    },
     "success": true
 }
 ```
@@ -88,7 +72,9 @@ There are a number of environment variables that can be set to control the servi
 | REMOTE_PDF_TLS_CERT_DIR                | $CWD/certs                                  |
 | REMOTE_PDF_TLS_CERT_PATH               | nil - required if TLS is true               |
 | REMOTE_PDF_TLS_KEY_PATH                | nil - required if TLS is true               |
-| REMOTE_PDF_LOG_PATH                    | /var/log - currently unused                 |
+| REMOTE_PDF_LOG_PATH                    | /var/log                                    |
+| REMOTE_PDF_DEBUG                       | false                                       |
+| REMOTE_PDF_DEBUG_SOURCES               | false - if true save the submitted data     |
 
 
 # Docker Container
