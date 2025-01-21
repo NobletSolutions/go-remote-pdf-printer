@@ -140,6 +140,12 @@ func getPrintOptions(requestParams *PdfRequest, headerStyleTemplate *string) (*p
 	params := page.PrintToPDF()
 	params.PrintBackground = true
 
+	// These are the default margins chrome has - but unless set uses no margins
+	params.MarginTop = 0.4
+	params.MarginBottom = 0.4
+	params.MarginLeft = 0.39
+	params.MarginRight = 0.39
+
 	if requestParams.Header != nil {
 		if requestParams.MarginTop == nil {
 			return nil, errors.New("marginTop is required when providing a header template")
