@@ -160,9 +160,13 @@ func getPdfPreview(c *gin.Context) {
 	serverUrl := location.Get(c)
 	url := serverUrl.Scheme + "://" + serverUrl.Host + "/preview/"
 
+	// pdftocairo prepends 0 to the page name, so we need to return the correct name prepended as well
+	numberOfDigits := strconv.Itoa(int(pages))
+	format := fmt.Sprintf("%s%s-%s%d%s.jpg", "%s", "%s", "%0", len(numberOfDigits), "d")
+
 	var images []string
 	for i := range pages {
-		images = append(images, fmt.Sprintf("%s%s-%d.jpg", url, baseName, i+1))
+		images = append(images, fmt.Sprintf(format, url, baseName, i+1))
 	}
 
 	c.IndentedJSON(http.StatusOK, PreviewResponse{Pages: int8(pages), Images: images, pdfInfo: pdfInfo})
