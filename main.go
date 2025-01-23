@@ -3,11 +3,10 @@ package main
 import (
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
-	"slices"
+	"sort"
 	"strconv"
 
 	"github.com/NobletSolutions/go-remote-pdf-printer/docs"
@@ -52,8 +51,21 @@ func extractData(c *gin.Context) (*PdfRequest, bool) {
 	}
 
 	if pdfRequestParams.Data == nil {
-		conf := c.PostFormMap("data")
-		pdfRequestParams.Data = slices.Collect(maps.Values(conf))
+		formData := c.PostFormMap("data")
+
+		// Getting the form is not guaranteed to come in submission order
+		// So we sort them
+		keys := make([]string, 0, len(formData))
+
+		for k := range formData {
+			keys = append(keys, k)
+		}
+
+		sort.Strings(keys)
+
+		for _, key := range keys {
+			pdfRequestParams.Data = append(pdfRequestParams.Data, formData[key])
+		}
 	}
 
 	if len(pdfRequestParams.Data) <= 0 {
