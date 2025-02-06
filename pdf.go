@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"time"
 
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/target"
@@ -70,13 +71,20 @@ func buildPdf(pdfRequestParams *PdfRequest, serverOptions *ServerOptions) (*PdfR
 	}
 
 	channel := make(chan PdfStatus)
+	chromeUri := "ws://" + serverOptions.ChromeUri
+
+	if serverOptions.Debug {
+		log.Printf("ChromeUri: %s\n", chromeUri)
+	}
+
 	for index, requestDataOrUrl := range requestData {
-		allocatorContext, _ := chromedp.NewRemoteAllocator(context.Background(), "ws://"+serverOptions.ChromeUri)
-
+		allocatorContext, _ := chromedp.NewRemoteAllocator(context.Background(), chromeUri)
 		// create context
-		ctx, cancel := chromedp.NewContext(allocatorContext, opts...)
+		ctx, cancelContext := chromedp.NewContext(allocatorContext, opts...)
 
-		go chromedp.Run(ctx, printToPDF(requestDataOrUrl, printOptions, index, channel, cancel))
+		ctx, cancelTimeout := context.WithTimeout(ctx, 5*time.Second)
+
+		go chromedp.Run(ctx, printToPDF(requestDataOrUrl, printOptions, index, channel, cancelContext, cancelTimeout))
 	}
 
 	outputFiles := make(map[int]string)
@@ -111,7 +119,7 @@ func buildPdf(pdfRequestParams *PdfRequest, serverOptions *ServerOptions) (*PdfR
 	return &PdfReturn{OutputFile: combinedFile, OutputFiles: outputs}, nil
 }
 
-func printToPDF(urlStr string, params *page.PrintToPDFParams, index int, res chan PdfStatus, cancelContext context.CancelFunc) chromedp.Tasks {
+func printToPDF(urlStr string, params *page.PrintToPDFParams, index int, res chan PdfStatus, cancelContext context.CancelFunc, cancelTimeoutContext context.CancelFunc) chromedp.Tasks {
 	var base64EncodedData string
 	match, _ := regexp.MatchString("(?i)^(https?|file|data):", urlStr)
 	if match {
@@ -131,6 +139,7 @@ func printToPDF(urlStr string, params *page.PrintToPDFParams, index int, res cha
 			}
 
 			defer cancelContext()
+			defer cancelTimeoutContext()
 			return nil
 		}),
 	}
