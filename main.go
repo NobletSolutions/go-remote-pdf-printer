@@ -54,17 +54,24 @@ func extractData(c *gin.Context) (*PdfRequest, bool) {
 		formData := c.PostFormMap("data")
 
 		// Getting the form is not guaranteed to come in submission order
-		// So we sort them
-		keys := make([]string, 0, len(formData))
+		// We sort them, but need to sort numerically instead of via strings
+		// otherwise we get sorted results like 0,1,10,11,...2,20.
+		keys := make([]int, 0, len(formData))
 
 		for k := range formData {
-			keys = append(keys, k)
+			i, err := strconv.Atoi(k)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data", "details": err.Error()})
+				return nil, false
+			}
+			keys = append(keys, i)
 		}
 
-		sort.Strings(keys)
+		sort.Ints(keys)
 
 		for _, key := range keys {
-			pdfRequestParams.Data = append(pdfRequestParams.Data, formData[key])
+			a := strconv.Itoa(key)
+			pdfRequestParams.Data = append(pdfRequestParams.Data, formData[a])
 		}
 	}
 
