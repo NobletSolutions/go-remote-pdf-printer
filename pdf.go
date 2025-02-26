@@ -64,6 +64,7 @@ func buildPdf(pdfRequestParams *PdfRequest, serverOptions *ServerOptions) (*PdfR
 	// build context options
 	var opts []chromedp.ContextOption
 	opts = append(opts, chromedp.WithLogf(log.Printf))
+	opts = append(opts, chromedp.WithErrorf(log.Printf))
 
 	if serverOptions.Debug {
 		opts = append(opts, chromedp.WithDebugf(log.Printf))
