@@ -92,3 +92,14 @@ You'll need a headless chrome instance running and listening on port 1337
 `podman run -name remote-pdf-printer -e REMOTE_PDF_LISTEN=0.0.0.0 -e REMOTE_PDF_CHROME_URI="host.containers.internal:1337" -e REMOTE_PDF_TLS_ENABLE=false -p 8080:3000 -v ./files:/app/files:z localhost/remote-pdf-printer:latest`
 
 Will start the container
+
+## Chrome Headless
+
+The remote PDF service depends on a headless chrome instance. A dockerfile is provided in the chrome-headless directory that is known to work
+
+`podman build chromium-headless/ -t localhost/chromium-headless:testing` will build it. If you require additional repos or packages you can pass additional build args. The defaults are 
+
+```
+APP_DNF_PACKAGES="chromium-headless socat"
+APP_DNF_REPOS=""
+```
