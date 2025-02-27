@@ -18,11 +18,11 @@ func fileNameWithoutExtension(fileName string) string {
 }
 
 func createDirectories(options *ServerOptions) {
-	for _, path := range [3]string{"pdfs", "sources", "previews"} {
+	for _, path := range [4]string{"pdfs", "sources", "previews", "pngs"} {
 		if !pathExists(*options.RootDirectory + "/files/" + path) {
 			err := os.MkdirAll(*options.RootDirectory+"/files/"+path, 0755)
 			if err != nil {
-				panic("Unable to create pdf directory: " + err.Error())
+				panic("Unable to create " + path + " directory: " + err.Error())
 			}
 		}
 	}

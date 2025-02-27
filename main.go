@@ -47,6 +47,11 @@ type PreviewResponse struct {
 	pdfInfo map[string]string
 }
 
+type PngResponse struct {
+	Png string `json:"png"`
+	Url string `json:"url"`
+}
+
 func extractData(c *gin.Context) (*PdfRequest, bool) {
 	var pdfRequestParams PdfRequest
 
@@ -219,16 +224,17 @@ func getPng(c *gin.Context) {
 		return
 	}
 
-	pngResult, err := buildPng(pngRequestParams, options)
+	outputFile, err := buildPng(&pngRequestParams, options)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate screenshot!", "message": err.Error()})
 		return
 	}
-	// baseName, err := createPreviews(pdfResult.OutputFile.Name(), *options.RootDirectory+"/files/previews/")
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate PDF!", "message": err.Error()})
-	// 	return
-	// }
+
+	outFileName := filepath.Base(outputFile.Name())
+	serverUrl := location.Get(c)
+	url := serverUrl.Scheme + "://" + serverUrl.Host + "/png/"
+
+	c.IndentedJSON(http.StatusOK, PngResponse{Png: outFileName, Url: url + outFileName})
 }
 
 func getStatus(c *gin.Context) {
@@ -266,6 +272,7 @@ func main() {
 
 	router.POST("/pdf", getPdf)
 	router.POST("/preview", getPdfPreview)
+	router.POST("/png", getPng)
 	router.GET("/status", getStatus)
 	router.Static("/pdfs", *serverOptions.RootDirectory+"/files/pdfs")
 	router.Static("/preview", *serverOptions.RootDirectory+"/files/previews")

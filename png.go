@@ -1,15 +1,19 @@
 package main
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log"
 	"os"
+	"regexp"
 
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 )
 
-func buildPng(pngRequestParams *PngRequest, serverOptions *ServerOptions) error {
+func buildPng(pngRequestParams *PngRequest, serverOptions *ServerOptions) (*os.File, error) {
 	requestData := pngRequestParams.Data
 	if serverOptions.DebugSources {
 		tempFile, err := os.CreateTemp(*serverOptions.RootDirectory+"/files/sources/", "*.html")
@@ -21,98 +25,117 @@ func buildPng(pngRequestParams *PngRequest, serverOptions *ServerOptions) error 
 		}
 	}
 
-	printOptions, err := getPrintOptions(pdfRequestParams, &serverOptions.HeaderStyleTemplate)
+	printOptions, err := getScreenshotOptions(pngRequestParams)
+	if err != nil {
+		log.Printf("Error: %s", err.Error())
+		return nil, err
+	}
+
+	// build context options
+	var opts []chromedp.ContextOption
+	opts = append(opts, chromedp.WithLogf(log.Printf))
+	opts = append(opts, chromedp.WithErrorf(log.Printf))
+
+	if serverOptions.Debug {
+		opts = append(opts, chromedp.WithDebugf(log.Printf))
+	}
+
+	allocatorContext, _ := chromedp.NewRemoteAllocator(context.Background(), "ws://"+serverOptions.ChromeUri)
+
+	// create context
+	ctx, cancel := chromedp.NewContext(allocatorContext, opts...)
+	defer cancel()
+
+	var base64EncodedData string
+	match, _ := regexp.MatchString("(?i)^(https?|file|data):", pngRequestParams.Data)
+	if match {
+		base64EncodedData = pngRequestParams.Data
+	} else {
+		base64EncodedData = "data:text/html;base64," + base64.StdEncoding.EncodeToString([]byte(pngRequestParams.Data))
+	}
 
 	var screenshotBuffer []byte
-	err := chromedp.Run(ctx,
-		chromedp.Navigate("https://www.scrapingcourse.com/ecommerce/product/adrienne-trek-jacket/"),
-		chromedp.FullScreenshot(&screenshotBuffer, 100),
+	err = chromedp.Run(ctx,
+		chromedp.Navigate(base64EncodedData),
+		printToPng(&screenshotBuffer, printOptions),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// file permissions: 0644 (Owner: read/write, Group: read, Others: read)
-	// write the response body to an image file
-	err = os.WriteFile("full-page-screenshot.png", screenshotBuffer, 0644)
+	// chromedp.Run(ctx, printToPng(base64EncodedData, printOptions, cancel, &screenshotBuffer))
+	sz := len(screenshotBuffer)
+	log.Printf("Screenshot Buffer Length %d", sz)
+
+	if sz <= 0 {
+		return nil, errors.New("no image returned")
+	}
+
+	tempFile, err := os.CreateTemp(*serverOptions.RootDirectory+"/files/pngs/", "*.png")
 	if err != nil {
-		return err
+		return nil, errors.New("unable to create output file")
 	}
 
-	return nil
+	os.WriteFile(tempFile.Name(), screenshotBuffer, 0640)
+
+	return tempFile, nil
 }
 
-func getScreenshotOptions(requestParams *PdfRequest, headerStyleTemplate *string) (*page.PrintToPDFParams, error) {
-	params := page.CaptureScreenshotFormatPng
-	params.PrintBackground = true
-
-	// These are the default margins chrome has - but unless set uses no margins
-	params.MarginTop = 0.4
-	params.MarginBottom = 0.4
-	params.MarginLeft = 0.39
-	params.MarginRight = 0.39
-
-	if requestParams.Header != nil {
-		if requestParams.MarginTop == nil {
-			return nil, errors.New("marginTop is required when providing a header template")
-		}
-
-		params.DisplayHeaderFooter = true
-		params.HeaderTemplate = *headerStyleTemplate + *requestParams.Header
-		params.FooterTemplate = "<footer></footer>"
-
-		// accounts for the odd -0.16in margins
-		var adjustment float64 = 0.35
-		if *requestParams.MarginTop-1 > 0 {
-			adjustment += 0.35 * (float64(*requestParams.MarginTop) - 1)
-		}
-		var top float64 = adjustment
-		top += float64(*requestParams.MarginTop)
-		params.MarginTop = top
+func printToPng(res *[]byte, params *page.CaptureScreenshotParams) chromedp.Action {
+	if res == nil {
+		panic("res cannot be nil")
 	}
 
-	if requestParams.Footer != nil {
-		if requestParams.MarginBottom == nil {
-			return nil, errors.New("marginBottom is required when providing a header template")
-		}
+	log.Println("SCREENSHOT - 1")
+	return chromedp.ActionFunc(func(ctx context.Context) error {
+		log.Println("SCREENSHOT - 2")
+		buf, err := params.Do(ctx)
+		// page.CaptureScreenshot().
+		// 	WithFormat(params.Format).
+		// 	WithCaptureBeyondViewport(true).
+		// 	WithFromSurface(true).
+		// 	WithClip(params.Clip).
+		// 	Do(ctx)
+		log.Println("SCREENSHOT - 3")
+		*res = buf
+		// log.Printf("Done")
+		return err
+	})
+}
 
-		params.DisplayHeaderFooter = true
-		params.FooterTemplate = *headerStyleTemplate + *requestParams.Footer
+// func printToPng(base64EncodedData string, params *page.CaptureScreenshotParams, cancelContext context.CancelFunc, screenshotBuffer *[]byte) chromedp.Tasks {
+// 	log.Println("Execute screenshot 1")
 
-		if params.HeaderTemplate == "" {
-			params.HeaderTemplate = "<header></header>"
-		}
+// 	return chromedp.Tasks{
+// 		chromedp.Navigate(base64EncodedData),
+// 		chromedp.ActionFunc(func(ctx context.Context) error {
+// 			log.Println("Execute screenshot 2")
+// 			defer cancelContext()
+// 			buf, err := params.Do(ctx)
+// 			if err != nil {
+// 				log.Println("Got Error")
+// 				return err
+// 			}
+// 			log.Println("No Error")
+// 			log.Printf("Buffer Length %d", len(buf))
 
-		// accounts for the odd -0.16in margins
-		var adjustment float64 = 0.35
-		if *requestParams.MarginBottom-1 > 0 {
-			adjustment += 0.35 * (float64(*requestParams.MarginBottom) - 1)
-		}
+// 			*screenshotBuffer = buf
+// 			return nil
+// 		}),
+// 	}
+// }
 
-		var bottom float64 = adjustment
-		bottom += float64(*requestParams.MarginBottom)
-		params.MarginBottom = bottom
+func getScreenshotOptions(requestParams *PngRequest) (*page.CaptureScreenshotParams, error) {
+	params := page.CaptureScreenshot()
+	params.Format = page.CaptureScreenshotFormatPng
+	params.Clip = &page.Viewport{X: 0, Y: 0, Width: 1020.0, Height: 150.0}
+
+	if requestParams.Width != nil {
+		params.Clip.Width = float64(*requestParams.Width)
 	}
 
-	if requestParams.MarginLeft != nil {
-		params.MarginLeft = float64(*requestParams.MarginLeft)
-	}
-
-	if requestParams.MarginRight != nil {
-		params.MarginRight = float64(*requestParams.MarginRight)
-	}
-
-	if requestParams.MarginTop != nil {
-		params.MarginTop = float64(*requestParams.MarginTop)
-	}
-
-	if requestParams.MarginBottom != nil {
-		params.MarginBottom = float64(*requestParams.MarginBottom)
-	}
-
-	if len(requestParams.PaperSize) == 2 {
-		params.PaperWidth = requestParams.PaperSize[0]
-		params.PaperHeight = requestParams.PaperSize[1]
+	if requestParams.Height != nil {
+		params.Clip.Height = float64(*requestParams.Height)
 	}
 
 	return params, nil
