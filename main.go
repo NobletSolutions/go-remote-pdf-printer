@@ -17,6 +17,13 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+type PngRequest struct {
+	Data     string   `json:"data" form:"data"`
+	Download bool     `json:"download" form:"download"`
+	Width    *float32 `json:"width" form:"width"`
+	Height   *float32 `json:"height" form:"height"`
+}
+
 type PdfRequest struct {
 	Data         []string  `json:"data" form:"data"`
 	Download     bool      `json:"download" form:"download"`
@@ -189,6 +196,39 @@ func getPdfPreview(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, PreviewResponse{Pages: int8(pages), Images: images, pdfInfo: pdfInfo})
+}
+
+func getPng(c *gin.Context) {
+	options, ok := c.MustGet("serverOptions").(*ServerOptions)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to retrieve data to generate screenshot!", "message": "Error retrieving ServerOptions"})
+		return
+	}
+
+	var pngRequestParams PngRequest
+
+	// Handle JSON/XML/Form-Data
+	err := c.ShouldBind(&pngRequestParams)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data", "details": err.Error()})
+		return
+	}
+
+	if len(pngRequestParams.Data) <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "No Data", "details": err.Error()})
+		return
+	}
+
+	pngResult, err := buildPng(pngRequestParams, options)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate screenshot!", "message": err.Error()})
+		return
+	}
+	// baseName, err := createPreviews(pdfResult.OutputFile.Name(), *options.RootDirectory+"/files/previews/")
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate PDF!", "message": err.Error()})
+	// 	return
+	// }
 }
 
 func getStatus(c *gin.Context) {
