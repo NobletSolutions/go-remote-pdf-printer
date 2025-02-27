@@ -22,6 +22,11 @@ type PngResponse struct {
 	Url string `json:"url"`
 }
 
+type PngResponse struct {
+	Png string `json:"png"`
+	Url string `json:"url"`
+}
+
 func extractData(c *gin.Context) (*PdfRequest, bool) {
 	var pdfRequestParams PdfRequest
 
@@ -213,6 +218,51 @@ func getPng(c *gin.Context) {
 
 	if pngRequestParams.Download {
 		c.FileAttachment(outputFile.Name(), "output.pdf")
+		return
+	}
+
+	outFileName := filepath.Base(outputFile.Name())
+	serverUrl := location.Get(c)
+	url := serverUrl.Scheme + "://" + serverUrl.Host + "/png/"
+
+	c.IndentedJSON(http.StatusOK, PngResponse{Png: outFileName, Url: url + outFileName})
+}
+
+// @Summary Submit a single url or data to be converted to a png
+// @Schemes
+// @Description Submit a single url or data to be converted to a png
+// @Accept json
+// @Accept xml
+// @Produce json
+// @Param data body PngRequest true "The input struct"
+// @Success 200 {object} PngResponse
+// @Failure      400
+// @Failure      500
+// @Router /png [post]
+func getPng(c *gin.Context) {
+	options, ok := c.MustGet("serverOptions").(*ServerOptions)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to retrieve data to generate screenshot!", "message": "Error retrieving ServerOptions"})
+		return
+	}
+
+	var pngRequestParams PngRequest
+
+	// Handle JSON/XML/Form-Data
+	err := c.ShouldBind(&pngRequestParams)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data", "details": err.Error()})
+		return
+	}
+
+	if len(pngRequestParams.Data) <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "No Data", "details": "pngRequestParams.Data is empty"})
+		return
+	}
+
+	outputFile, err := buildPng(&pngRequestParams, options)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate screenshot!", "message": err.Error()})
 		return
 	}
 
