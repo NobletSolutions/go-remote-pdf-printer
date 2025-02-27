@@ -97,7 +97,7 @@ Will start the container
 
 The remote PDF service depends on a headless chrome instance. A dockerfile is provided in the chrome-headless directory that is known to work
 
-`podman build chromium-headless/ -t localhost/chromium-headless:testing` will build it. If you require additional repos or packages you can pass additional build args. The defaults are 
+`podman build chrome-headless/ -t localhost/chromium-headless:testing` will build it. If you require additional repos or packages you can pass additional build args. The defaults are 
 
 ```
 APP_DNF_PACKAGES="chromium-headless socat"
