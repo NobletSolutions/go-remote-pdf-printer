@@ -53,6 +53,44 @@ const docTemplate = `{
                 }
             }
         },
+        "/png": {
+            "post": {
+                "description": "Submit a single url or data to be converted to a png",
+                "consumes": [
+                    "application/json",
+                    "text/xml"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Submit a single url or data to be converted to a png",
+                "parameters": [
+                    {
+                        "description": "The input request",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.PngRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.PngResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/preview": {
             "post": {
                 "description": "Submit urls/data to be converted to a PDF and then one image per page",
@@ -79,7 +117,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.PreviewResponse"
+                            "$ref": "#/definitions/main.PdfPreviewResponse"
                         }
                     },
                     "400": {
@@ -93,6 +131,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "main.PdfPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "pages": {
+                    "type": "integer"
+                }
+            }
+        },
         "main.PdfRequest": {
             "type": "object",
             "properties": {
@@ -128,12 +180,6 @@ const docTemplate = `{
                     "items": {
                         "type": "number"
                     }
-                },
-                "url": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },
@@ -151,23 +197,40 @@ const docTemplate = `{
                 }
             }
         },
-        "main.PreviewResponse": {
+        "main.PngRequest": {
             "type": "object",
             "properties": {
-                "images": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                "data": {
+                    "type": "string"
                 },
-                "pages": {
-                    "type": "integer"
+                "download": {
+                    "type": "boolean"
                 },
-                "pdfInfo": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
+                "height": {
+                    "type": "number"
+                },
+                "scale": {
+                    "type": "number"
+                },
+                "width": {
+                    "type": "number"
+                },
+                "x": {
+                    "type": "number"
+                },
+                "y": {
+                    "type": "number"
+                }
+            }
+        },
+        "main.PngResponse": {
+            "type": "object",
+            "properties": {
+                "png": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
                 }
             }
         }

@@ -20,6 +20,29 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type PdfRequest struct {
+	Data         []string  `json:"data" form:"data"`
+	Download     bool      `json:"download" form:"download"`
+	Header       *string   `json:"header" form:"header"`
+	Footer       *string   `json:"footer" form:"footer"`
+	MarginTop    *float32  `json:"marginTop" form:"marginTop"`
+	MarginBottom *float32  `json:"marginBottom" form:"marginBottom"`
+	MarginLeft   *float32  `json:"marginLeft"  form:"marginLeft"`
+	MarginRight  *float32  `json:"marginRight" form:"marginRight"`
+	PaperSize    []float64 `json:"paperSize" form:"paperSize"`
+}
+
+type PdfResponse struct {
+	Url        string   `json:"url"`
+	Components []string `json:"components"`
+}
+
+type PdfPreviewResponse struct {
+	Pages   int8     `json:"pages"`
+	Images  []string `json:"images"`
+	pdfInfo map[string]string
+}
+
 type PdfReturn struct {
 	OutputFile  *os.File
 	OutputFiles []string

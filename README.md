@@ -8,10 +8,16 @@ PDF
 * /pdf/:file [GET]
 * /preview [POST]
 * /preview/:file [GET]
+* /png [POST]
+* /png/:file [GET]
 
+All endpoints accepting a POST request can handle json, form-data and xml request formats.
 
-Both /pdf and /preview POST can handle json ,form-data, xml request formats.
+# /pdf and /preview
 
+Both these endpoints convert the requested page(s) or url(s) to PDFs. The `/preview` endpoint returns an image per page, and `/pdf` returns the actual pdf.
+
+## Request Options
 ```
 {
     "data": [...], // array of strings, submit HTML this way though nothing stops you from submitting an external URL
@@ -27,7 +33,7 @@ Both /pdf and /preview POST can handle json ,form-data, xml request formats.
 }
 ```
 
-# /pdf
+## /pdf
 
 When download is set to false the return value is json
 
@@ -42,7 +48,7 @@ When download is set to false the return value is json
 }
 ```
 
-# /preview
+## /preview
 
 The return value
 ```
@@ -54,6 +60,31 @@ The return value
     ],
     "pages": 2,
     "success": true
+}
+```
+
+# /png
+
+If none of x,y,width,height are provided the screenshot will be of the entire page
+
+```
+{
+    "data": '', // HTML or a URL
+    "download": boolean, // default false - return the file directly if true
+    "x": float, // Default 0, the x coordinate for the area being screenshot
+    "y": float, // Default 0, the y coordinate for the area being screenshot
+    "width": float, // Default 1024 if any x, y or height are provided and this is left empty
+    "height": float, // Default 150 if any x, y or width are provided and this is left empty
+    "scale": float, // Default 1 if any x, y, width or height are provided and this is left empty
+}
+```
+
+The response
+
+```
+{
+    "png": "2363534771.png",
+    "url": "http://localhost:8080/png/2363534771.png"
 }
 ```
 

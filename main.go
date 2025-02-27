@@ -17,27 +17,9 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-type PdfRequest struct {
-	Data         []string  `json:"data" form:"data"`
-	Download     bool      `json:"download" form:"download"`
-	Header       *string   `json:"header" form:"header"`
-	Footer       *string   `json:"footer" form:"footer"`
-	MarginTop    *float32  `json:"marginTop" form:"marginTop"`
-	MarginBottom *float32  `json:"marginBottom" form:"marginBottom"`
-	MarginLeft   *float32  `json:"marginLeft"  form:"marginLeft"`
-	MarginRight  *float32  `json:"marginRight" form:"marginRight"`
-	PaperSize    []float64 `json:"paperSize" form:"paperSize"`
-}
-
-type PdfResponse struct {
-	Url        string   `json:"url"`
-	Components []string `json:"components"`
-}
-
-type PreviewResponse struct {
-	Pages   int8     `json:"pages"`
-	Images  []string `json:"images"`
-	pdfInfo map[string]string
+type PngResponse struct {
+	Png string `json:"png"`
+	Url string `json:"url"`
 }
 
 func extractData(c *gin.Context) (*PdfRequest, bool) {
@@ -136,7 +118,7 @@ func getPdf(c *gin.Context) {
 // @Accept xml
 // @Produce json
 // @Param data body PdfRequest true "The input todo struct"
-// @Success 200 {object} PreviewResponse
+// @Success 200 {object} PdfPreviewResponse
 // @Failure      400
 // @Failure      500
 // @Router /preview [post]
@@ -188,7 +170,57 @@ func getPdfPreview(c *gin.Context) {
 		images = append(images, fmt.Sprintf(format, url, baseName, i+1))
 	}
 
-	c.IndentedJSON(http.StatusOK, PreviewResponse{Pages: int8(pages), Images: images, pdfInfo: pdfInfo})
+	c.IndentedJSON(http.StatusOK, PdfPreviewResponse{Pages: int8(pages), Images: images, pdfInfo: pdfInfo})
+}
+
+// @Summary Submit a single url or data to be converted to a png
+// @Schemes
+// @Description Submit a single url or data to be converted to a png
+// @Accept json
+// @Accept xml
+// @Produce json
+// @Param data body PngRequest true "The input request"
+// @Success 200 {object} PngResponse
+// @Failure      400
+// @Failure      500
+// @Router /png [post]
+func getPng(c *gin.Context) {
+	options, ok := c.MustGet("serverOptions").(*ServerOptions)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to retrieve data to generate screenshot!", "message": "Error retrieving ServerOptions"})
+		return
+	}
+
+	var pngRequestParams PngRequest
+
+	// Handle JSON/XML/Form-Data
+	err := c.ShouldBind(&pngRequestParams)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data", "details": err.Error()})
+		return
+	}
+
+	if len(pngRequestParams.Data) <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "No Data", "details": "pngRequestParams.Data is empty"})
+		return
+	}
+
+	outputFile, err := buildPng(&pngRequestParams, options)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate screenshot!", "message": err.Error()})
+		return
+	}
+
+	if pngRequestParams.Download {
+		c.FileAttachment(outputFile.Name(), "output.pdf")
+		return
+	}
+
+	outFileName := filepath.Base(outputFile.Name())
+	serverUrl := location.Get(c)
+	url := serverUrl.Scheme + "://" + serverUrl.Host + "/png/"
+
+	c.IndentedJSON(http.StatusOK, PngResponse{Png: outFileName, Url: url + outFileName})
 }
 
 func getStatus(c *gin.Context) {
@@ -226,8 +258,10 @@ func main() {
 
 	router.POST("/pdf", getPdf)
 	router.POST("/preview", getPdfPreview)
+	router.POST("/png", getPng)
 	router.GET("/status", getStatus)
 	router.Static("/pdfs", *serverOptions.RootDirectory+"/files/pdfs")
+	router.Static("/png", *serverOptions.RootDirectory+"/files/pngs")
 	router.Static("/preview", *serverOptions.RootDirectory+"/files/previews")
 
 	docs.SwaggerInfo.BasePath = "/"
