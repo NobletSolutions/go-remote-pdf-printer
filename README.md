@@ -103,3 +103,8 @@ The remote PDF service depends on a headless chrome instance. A dockerfile is pr
 APP_DNF_PACKAGES="chromium-headless socat"
 APP_DNF_REPOS=""
 ```
+
+
+## Chromedp Examples
+
+Run `git clone https://github.com/chromedp/examples.git chromedp-examples` to checkout samples on how to use the go chrome remote protocol. The directory chromedp-examples is ignored by git.
