@@ -10,13 +10,16 @@ import (
 	"maps"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/target"
 	"github.com/chromedp/chromedp"
+	"github.com/gin-contrib/location"
 	"github.com/gin-gonic/gin"
 )
 
@@ -52,6 +55,157 @@ type PdfStatus struct {
 	success bool
 	index   int
 	result  *[]byte
+}
+
+func extractData(c *gin.Context) (*PdfRequest, bool) {
+	var pdfRequestParams PdfRequest
+
+	// Handle JSON/XML/Form-Data
+	err := c.ShouldBind(&pdfRequestParams)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data", "details": err.Error()})
+		return nil, false
+	}
+
+	if pdfRequestParams.Data == nil {
+		formData := c.PostFormMap("data")
+
+		// Getting the form is not guaranteed to come in submission order
+		// We sort them, but need to sort numerically instead of via strings
+		// otherwise we get sorted results like 0,1,10,11,...2,20.
+		keys := make([]int, 0, len(formData))
+
+		for k := range formData {
+			i, err := strconv.Atoi(k)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data", "details": err.Error()})
+				return nil, false
+			}
+			keys = append(keys, i)
+		}
+
+		sort.Ints(keys)
+
+		for _, key := range keys {
+			a := strconv.Itoa(key)
+			pdfRequestParams.Data = append(pdfRequestParams.Data, formData[a])
+		}
+	}
+
+	if len(pdfRequestParams.Data) <= 0 {
+		return nil, false
+	}
+
+	return &pdfRequestParams, true
+}
+
+// @Summary Submit urls/data to be converted to a PDF
+// @Schemes
+// @Description Submit urls/data to be converted to a PDF
+// @Accept json
+// @Accept xml
+// @Produce json
+// @Param data body PdfRequest true "The input todo struct"
+// @Success 200 {object} PdfResponse
+// @Failure      400
+// @Failure      500
+// @Router /pdf [post]
+func getPdf(c *gin.Context) {
+	options, ok := c.MustGet("serverOptions").(*ServerOptions)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to retrieve data to generate PDF!", "message": "Error retrieving ServerOptions"})
+		return
+	}
+
+	pdfRequestParams, ok := extractData(c)
+	if !ok {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data"})
+		return
+	}
+
+	pdfResult, err := buildPdf(pdfRequestParams, options)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate PDF!", "message": err.Error()})
+		return
+	}
+
+	if pdfRequestParams.Download {
+		c.FileAttachment(pdfResult.OutputFile.Name(), "output.pdf")
+		return
+	}
+
+	var outputFiles []string
+	outFileName := filepath.Base(pdfResult.OutputFile.Name())
+	serverUrl := location.Get(c)
+	url := serverUrl.Scheme + "://" + serverUrl.Host + "/pdfs/"
+
+	for _, value := range pdfResult.OutputFiles {
+		outputFiles = append(outputFiles, url+filepath.Base(value))
+	}
+
+	c.IndentedJSON(http.StatusOK, PdfResponse{Url: url + outFileName, Components: outputFiles})
+}
+
+// @Summary Submit urls/data to be converted to a PDF and then one image per page
+// @Schemes
+// @Description Submit urls/data to be converted to a PDF and then one image per page
+// @Accept json
+// @Accept xml
+// @Produce json
+// @Param data body PdfRequest true "The input todo struct"
+// @Success 200 {object} PdfPreviewResponse
+// @Failure      400
+// @Failure      500
+// @Router /preview [post]
+func getPdfPreview(c *gin.Context) {
+	options, ok := c.MustGet("serverOptions").(*ServerOptions)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to retrieve data to generate PDF!", "message": "Error retrieving ServerOptions"})
+		return
+	}
+
+	pdfRequestParams, ok := extractData(c)
+	if !ok {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data"})
+		return
+	}
+
+	pdfResult, err := buildPdf(pdfRequestParams, options)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate PDF!", "message": err.Error()})
+		return
+	}
+
+	baseName, err := createPreviews(pdfResult.OutputFile.Name(), *options.RootDirectory+"/files/previews/")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate PDF!", "message": err.Error()})
+		return
+	}
+
+	pdfInfo, err := getPdfInfo(pdfResult.OutputFile.Name())
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate PDF!", "message": err.Error()})
+		return
+	}
+
+	pages, err := strconv.ParseInt(pdfInfo["pages"], 10, 8)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate PDF!", "message": "Unable to compute number of pages"})
+		return
+	}
+	serverUrl := location.Get(c)
+	url := serverUrl.Scheme + "://" + serverUrl.Host + "/preview/"
+
+	// pdftocairo prepends 0 to the page name, so we need to return the correct name prepended as well
+	numberOfDigits := strconv.Itoa(int(pages))
+	format := fmt.Sprintf("%s%s-%s%d%s.jpg", "%s", "%s", "%0", len(numberOfDigits), "d")
+
+	var images []string
+	for i := range pages {
+		images = append(images, fmt.Sprintf(format, url, baseName, i+1))
+	}
+
+	c.IndentedJSON(http.StatusOK, PdfPreviewResponse{Pages: int8(pages), Images: images, pdfInfo: pdfInfo})
 }
 
 func getBrowserTargets(c *gin.Context) chromedp.Tasks {

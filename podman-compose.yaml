@@ -1,0 +1,26 @@
+---
+version: '3.7'
+
+volumes:
+  remote-pdf-logs-vol:
+      name: remote-pdf-logs-vol
+
+
+services:
+  pdf:
+    image: localhost/remote-pdf-printer:testing
+    ports:
+      - "3001:3000"
+    environment:
+      - REMOTE_PDF_LISTEN=0.0.0.0
+      - REMOTE_PDF_CHROME_URI=chrome:1337
+      - REMOTE_PDF_TLS_ENABLE=false
+      - REMOTE_PDF_DEBUG=true
+      - REMOTE_PDF_DEBUG_SOURCES=true
+      - REMOTE_PDF_LOG_PATH=/app/logs
+    volumes:
+        - ./files:/app/files/:z
+        - remote-pdf-logs-vol:/app/logs/:z
+  chrome:
+    image: localhost/chromium-headless:testing
+    tty: true

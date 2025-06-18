@@ -6,16 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
-	"fmt"
-	"math"
 
-	"github.com/chromedp/cdproto/cdp"
-	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/page"
-	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+	"github.com/gin-contrib/location"
+	"github.com/gin-gonic/gin"
 )
 
 type PngRequest struct {
@@ -26,8 +25,63 @@ type PngRequest struct {
 	Width    *float32 `json:"width" form:"width"`
 	Height   *float32 `json:"height" form:"height"`
 	Scale    *float32 `json:"scale" form:"scale"`
-	DomId    string   `json:"domId" form:"domId"`
-	Xpath    string   `json:"xpath" form:"xpath"`
+	DomId    *string  `json:"domId" form:"domId"`
+	Xpath    *string  `json:"xpath" form:"xpath"`
+}
+
+type PngResponse struct {
+	Png string `json:"png"`
+	Url string `json:"url"`
+}
+
+// @Summary Submit a single url or data to be converted to a png
+// @Schemes
+// @Description Submit a single url or data to be converted to a png
+// @Accept json
+// @Accept xml
+// @Produce json
+// @Param data body PngRequest true "The input request"
+// @Success 200 {object} PngResponse
+// @Failure      400
+// @Failure      500
+// @Router /png [post]
+func getPng(c *gin.Context) {
+	options, ok := c.MustGet("serverOptions").(*ServerOptions)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to retrieve data to generate screenshot!", "message": "Error retrieving ServerOptions"})
+		return
+	}
+
+	var pngRequestParams PngRequest
+
+	// Handle JSON/XML/Form-Data
+	err := c.ShouldBind(&pngRequestParams)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data", "details": err.Error()})
+		return
+	}
+
+	if len(pngRequestParams.Data) <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "No Data", "details": "pngRequestParams.Data is empty"})
+		return
+	}
+
+	outputFile, err := buildPng(&pngRequestParams, options)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate screenshot!", "message": err.Error()})
+		return
+	}
+
+	if pngRequestParams.Download {
+		c.FileAttachment(outputFile.Name(), "output.pdf")
+		return
+	}
+
+	outFileName := filepath.Base(outputFile.Name())
+	serverUrl := location.Get(c)
+	url := serverUrl.Scheme + "://" + serverUrl.Host + "/png/"
+
+	c.IndentedJSON(http.StatusOK, PngResponse{Png: outFileName, Url: url + outFileName})
 }
 
 func buildPng(pngRequestParams *PngRequest, serverOptions *ServerOptions) (*os.File, error) {
@@ -106,12 +160,16 @@ func printToPng(res *[]byte, params *page.CaptureScreenshotParams, requestParams
 		panic("res cannot be nil")
 	}
 
-	if requestParams.DomId {
-
+	if requestParams.DomId != nil {
+		// log.Println("DomId is Not null")
+		return chromedp.ActionFunc(func(ctx context.Context) error {
+			chromedp.Screenshot(requestParams.DomId, res)
+			return nil
+		})
 	}
 
-	if requestParams.Xpath {
-
+	if requestParams.Xpath != nil {
+		log.Println("Xpath is Not null")
 	}
 
 	return chromedp.ActionFunc(func(ctx context.Context) error {
@@ -156,6 +214,7 @@ func getScreenshotOptions(requestParams *PngRequest) (*page.CaptureScreenshotPar
 	return params, nil
 }
 
+/*
 func screenshotElement(sel interface{}, params *page.CaptureScreenshotParams, res *[]byte, opts ...chromedp.QueryOption) chromedp.QueryAction {
 	if res == nil {
 		panic("picbuf cannot be nil")
@@ -261,3 +320,4 @@ func max(a, b float64) float64 {
 	}
 	return b
 }
+*/
