@@ -18,13 +18,17 @@ func fileNameWithoutExtension(fileName string) string {
 }
 
 func createDirectories(options *ServerOptions) {
-	for _, path := range [4]string{"pdfs", "sources", "previews", "pngs"} {
-		if !pathExists(*options.RootDirectory + "/files/" + path) {
-			err := os.MkdirAll(*options.RootDirectory+"/files/"+path, 0755)
+	options.DirectoryMap = make(map[string]*string)
+	for _, path := range [4]string{DirectoryKeyPdf, DirectoryKeySources, DirectoryKeyPreview, DirectoryKeyPng} {
+		fullPath := *options.RootDirectory + "/files/" + path
+		if !pathExists(fullPath) {
+			err := os.MkdirAll(fullPath, 0755)
 			if err != nil {
 				panic("Unable to create " + path + " directory: " + err.Error())
 			}
 		}
+
+		options.DirectoryMap[path] = &fullPath
 	}
 
 	if options.CertDirectory != nil && !pathExists(*options.CertDirectory) {

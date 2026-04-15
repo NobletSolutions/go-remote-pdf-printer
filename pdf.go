@@ -70,7 +70,7 @@ func getBrowserTargets(c *gin.Context) chromedp.Tasks {
 func buildPdf(pdfRequestParams *PdfRequest, serverOptions *ServerOptions) (*PdfReturn, error) {
 	requestData := pdfRequestParams.Data
 	if serverOptions.DebugSources {
-		tempFile, err := os.CreateTemp(*serverOptions.RootDirectory+"/files/sources/", "*.html")
+		tempFile, err := os.CreateTemp(*serverOptions.DirectoryMap[DirectoryKeySources], "*.html")
 		if err == nil {
 			b, err := json.Marshal(requestData)
 			if err == nil {
@@ -109,7 +109,7 @@ func buildPdf(pdfRequestParams *PdfRequest, serverOptions *ServerOptions) (*PdfR
 	for i := range result {
 		result[i] = <-channel
 		if result[i].success {
-			tempFile, err := os.CreateTemp(*serverOptions.RootDirectory+"/files/pdfs/", fmt.Sprintf("%d-*.pdf", i))
+			tempFile, err := os.CreateTemp(*serverOptions.DirectoryMap[DirectoryKeyPdf], fmt.Sprintf("%d-*.pdf", i))
 			if err != nil {
 				return nil, errors.New("unable to create output file")
 			}

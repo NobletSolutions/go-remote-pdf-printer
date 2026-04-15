@@ -8,6 +8,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	DirectoryKeySources string = "sources"
+	DirectoryKeyPng     string = "png"
+	DirectoryKeyPdf     string = "pdfs"
+	DirectoryKeyPreview string = "preview"
+)
+
 type ServerOptions struct {
 	Port                int16
 	Address             string
@@ -18,6 +25,7 @@ type ServerOptions struct {
 	LogPath             string
 	LogFile             *os.File
 	RootDirectory       *string
+	DirectoryMap        map[string]*string
 	HeaderStyleTemplate string
 	ChromeUri           string
 	Debug               bool

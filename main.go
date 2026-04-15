@@ -141,7 +141,7 @@ func getPdfPreview(c *gin.Context) {
 		return
 	}
 
-	baseName, err := createPreviews(pdfResult.OutputFile.Name(), *options.RootDirectory+"/files/previews/")
+	baseName, err := createPreviews(pdfResult.OutputFile.Name(), *options.DirectoryMap[DirectoryKeyPreview])
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate PDF!", "message": err.Error()})
 		return
@@ -251,6 +251,7 @@ func main() {
 
 	router.SetTrustedProxies(nil)
 	router.Use(ApiMiddleware(serverOptions))
+	router.Use(ClearFileMiddleware(serverOptions.RootDirectory))
 	router.Use(location.Default())
 	if serverOptions.Debug {
 		router.Use(LogRequestDataMiddleware(serverOptions))
@@ -260,9 +261,9 @@ func main() {
 	router.POST("/preview", getPdfPreview)
 	router.POST("/png", getPng)
 	router.GET("/status", getStatus)
-	router.Static("/pdfs", *serverOptions.RootDirectory+"/files/pdfs")
-	router.Static("/png", *serverOptions.RootDirectory+"/files/pngs")
-	router.Static("/preview", *serverOptions.RootDirectory+"/files/previews")
+	router.Static("/pdfs", *serverOptions.DirectoryMap[DirectoryKeyPdf])
+	router.Static("/png", *serverOptions.DirectoryMap[DirectoryKeyPng])
+	router.Static("/preview", *serverOptions.DirectoryMap[DirectoryKeyPreview])
 
 	docs.SwaggerInfo.BasePath = "/"
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))

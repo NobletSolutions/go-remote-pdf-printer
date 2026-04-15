@@ -26,7 +26,7 @@ type PngRequest struct {
 func buildPng(pngRequestParams *PngRequest, serverOptions *ServerOptions) (*os.File, error) {
 	requestData := pngRequestParams.Data
 	if serverOptions.DebugSources {
-		tempFile, err := os.CreateTemp(*serverOptions.RootDirectory+"/files/sources/", "*.html")
+		tempFile, err := os.CreateTemp(*serverOptions.DirectoryMap[DirectoryKeySources], "*.html")
 		if err == nil {
 			b, err := json.Marshal(requestData)
 			if err == nil {
@@ -84,7 +84,7 @@ func buildPng(pngRequestParams *PngRequest, serverOptions *ServerOptions) (*os.F
 		return nil, errors.New("no image returned")
 	}
 
-	tempFile, err := os.CreateTemp(*serverOptions.RootDirectory+"/files/pngs/", "*.png")
+	tempFile, err := os.CreateTemp(*serverOptions.DirectoryMap[DirectoryKeyPng], "*.png")
 	if err != nil {
 		return nil, errors.New("unable to create output file")
 	}

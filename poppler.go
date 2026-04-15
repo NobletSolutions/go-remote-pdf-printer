@@ -51,7 +51,7 @@ func createPreviews(pdfFile string, outputDir string) (string, error) {
 
 func combinePdfs(inputFiles []string, options *ServerOptions) (*os.File, error) {
 	// Merge the PDF files
-	combinedFile, err := os.CreateTemp(*options.RootDirectory+"/files/pdfs/", "*-combined.pdf")
+	combinedFile, err := os.CreateTemp(*options.DirectoryMap[DirectoryKeyPdf], "*-combined.pdf")
 	if err != nil {
 		return nil, errors.New("unable to create combined pdf output files")
 	}
