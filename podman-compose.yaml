@@ -1,0 +1,24 @@
+---
+version: '3.7'
+
+services:
+  chrome:
+    image: localhost/chromium-headless:dev
+    build:
+        context: ./chrome-headless
+        dockerfile: Dockerfile
+    tty: true
+
+  pdf:
+    image: localhost/remote-pdf-printer:dev
+    build:
+        context: ./
+        dockerfile: ./Dockerfile
+    environment:
+      - REMOTE_PDF_LISTEN=0.0.0.0
+      - REMOTE_PDF_CHROME_URI=chrome:1337
+      - REMOTE_PDF_TLS_ENABLE=false
+    ports:
+      - "8080:3000"
+    volumes:
+      - ./files:/app/files:z

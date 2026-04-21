@@ -107,6 +107,20 @@ There are a number of environment variables that can be set to control the servi
 | REMOTE_PDF_DEBUG                       | false                                       |
 | REMOTE_PDF_DEBUG_SOURCES               | false - if true save the submitted data     |
 
+# Podman Compose
+
+You can build and run both containers automatically by using the podman-composer.yaml and podman-compose (or docker-compose).
+
+```
+# To build
+podman-compose -f podman-compose.yaml build
+
+# To bring up all the containers and run in the background
+podman-compose -f podman-compose.yaml up -d
+
+# To stop both containers
+podman-compose -f podman-compose.yaml down
+```
 
 # Docker Container
 
