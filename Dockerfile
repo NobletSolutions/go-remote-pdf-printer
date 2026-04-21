@@ -1,4 +1,4 @@
-FROM fedora:41 as builder
+FROM fedora:43 as builder
 
 RUN dnf install -y golang
 
@@ -12,8 +12,8 @@ RUN go mod download
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./remote-pdf-printer
 
-FROM fedora:41 as prod
-MAINTAINER nathanael@noblet.ca
+FROM fedora:43 as prod
+LABEL org.opencontainers.image.authors="nathanael@noblet.ca"
 
 WORKDIR /app
 
