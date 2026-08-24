@@ -1,4 +1,4 @@
-FROM fedora:43 as builder
+FROM fedora:44 as builder
 
 RUN dnf install -y golang
 
