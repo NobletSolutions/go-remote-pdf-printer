@@ -223,6 +223,47 @@ func getPng(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, PngResponse{Png: outFileName, Url: url + outFileName})
 }
 
+// @Summary Submit a single url to get source html (waits for SPAs)
+// @Schemes
+// @Description Submit a single url to get source html (waits for SPAs)
+// @Accept json
+// @Accept xml
+// @Produce json
+// @Param data body ExtractRequest true "The input request"
+// @Success 200 {object} ExtractedReturn
+// @Failure      400
+// @Failure      500
+// @Router /extract [post]
+func getExtracted(c *gin.Context) {
+	options, ok := c.MustGet("serverOptions").(*ServerOptions)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to retrieve data!", "message": "Error retrieving ServerOptions"})
+		return
+	}
+
+	var extractRequestParams ExtractRequest
+
+	// Handle JSON/XML/Form-Data
+	err := c.ShouldBind(&extractRequestParams)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to extract request data", "details": err.Error()})
+		return
+	}
+
+	if len(*extractRequestParams.Url) <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "No Data", "details": "url is empty"})
+		return
+	}
+
+	extractedReturn, err := buildExtracted(extractRequestParams.Url, options)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Unable to generate screenshot!", "message": err.Error()})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, extractedReturn)
+}
+
 func getStatus(c *gin.Context) {
 	serverOptions, ok := c.MustGet("serverOptions").(*ServerOptions)
 	if !ok {
@@ -260,6 +301,7 @@ func main() {
 	router.POST("/pdf", getPdf)
 	router.POST("/preview", getPdfPreview)
 	router.POST("/png", getPng)
+	router.POST("/extract", getExtracted)
 	router.GET("/status", getStatus)
 	router.Static("/pdfs", *serverOptions.DirectoryMap[DirectoryKeyPdf])
 	router.Static("/png", *serverOptions.DirectoryMap[DirectoryKeyPng])
