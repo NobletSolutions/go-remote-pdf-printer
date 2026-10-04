@@ -12,15 +12,15 @@ RUN go mod download
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./remote-pdf-printer
 
-FROM fedora:43 as prod
+FROM fedora:44 as prod
 LABEL org.opencontainers.image.authors="nathanael@noblet.ca"
 
 WORKDIR /app
 
+RUN dnf install -y poppler-utils && dnf clean all
 COPY css ./css
 COPY docs/swagger* ./docs/
 COPY --from=builder /app/remote-pdf-printer /app/remote-pdf-printer
-RUN dnf install -y poppler-utils && dnf clean all
 
 EXPOSE 3000
 CMD ["/app/remote-pdf-printer"]
